@@ -12,7 +12,7 @@ def recvall(sock):
 
 def main():
     HOST = 'localhost'
-    PORT = 9010
+    PORT = 9021
     while True:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
             try:

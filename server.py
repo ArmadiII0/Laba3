@@ -5,6 +5,7 @@ from datetime import datetime
 import threading
 import os
 
+
 def get_process_info():
     process_info = []
     for proc in psutil.process_iter():
@@ -17,7 +18,7 @@ def get_process_info():
 
 def update_and_send_data(client_socket):
     process_info = get_process_info()
-    current_time = datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
+    current_time = datetime.now().strftime("var3%d-%m-%Y_%H:%M:%S")
     file_name = f"./{current_time}.json"
     with open(file_name, 'w') as f:
         json.dump(process_info, f)
@@ -38,7 +39,7 @@ def handle_client(conn, addr):
                 if not data:
                     print("Соединение с клиентом разорвано.")
                     break
-                elif data.decode() == 'update':
+                elif data.decode() == 'var3':
                     update_and_send_data(conn)
                     print("Данные обновлены и отправлены клиенту.")
                     break
@@ -47,8 +48,12 @@ def handle_client(conn, addr):
                     json_data = json.dumps(executable_info, ensure_ascii=False, indent=4)
                     data_bytes = json_data.encode()
                     conn.send(data_bytes)
-
                     conn.shutdown(socket.SHUT_WR)
+                elif data.decode() == 'var1':
+                    data = conn.recv(1024)
+                    print(data.decode())
+                    update_and_send_data_var1(conn, data.decode())
+                    break
                 else:
                     print("Неверная команда от клиента.")
                     break
@@ -59,6 +64,41 @@ def handle_client(conn, addr):
     finally:
         conn.close()
         print('Отключение клиента', addr)
+
+
+def update_and_send_data_var1(client_socket, n):
+    ls_info = list_files_recursive(n)
+    current_time = datetime.now().strftime("var1%d-%m-%Y_%H:%M:%S")
+    file_name = f"./{current_time}.json"
+    with open(file_name, 'w') as f:
+        json.dump(ls_info, f)
+    with open(file_name, 'rb') as f:
+        data = f.read()
+        client_socket.sendall(data)
+    client_socket.close()
+
+
+def list_files_recursive(path):
+    result = []
+    for root, dirs, files in os.walk(path):
+        directory_info = {"Directory": root, "Files": [], "Directories": []}
+        for directory in dirs:
+            directory_info["Directories"].append({"Name": directory, "Type": "Directory"})
+        for file in files:
+            file_path = os.path.join(root, file)
+            file_stat = os.stat(file_path)
+            file_info = {
+                "Name": file,
+                "Type": "File",
+                "Permissions": file_stat.st_mode & 0o777,
+                "Owner": file_stat.st_uid,
+                "Group": file_stat.st_gid,
+                "Size": file_stat.st_size,
+                "Last Modified": file_stat.st_mtime
+            }
+            directory_info["Files"].append(file_info)
+        result.append(directory_info)
+    return result
 
 def find_executables_in_path():
     executables = {}
@@ -81,7 +121,7 @@ def find_executables_in_path():
 def create_socket_and_listen():
     global sock
     sock = socket.socket()
-    sock.bind(('', 9010))
+    sock.bind(('', 9021))
     sock.listen(5)
     print('Начало прослушивания порта')
     while True:
