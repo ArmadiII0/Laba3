@@ -19,7 +19,7 @@ def send_command_to_server(host, port, command):
 
 if __name__ == "__main__":
     host = 'localhost'
-    port = 12345
+    port = 9099
 
     command = input("Enter command (update to update data): ")
     response = send_command_to_server(host, port, command)
