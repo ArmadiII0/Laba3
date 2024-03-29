@@ -2,6 +2,8 @@ import socket
 import json
 import psutil
 from datetime import datetime
+import threading
+import os
 
 def get_process_info():
     process_info = []
@@ -24,29 +26,74 @@ def update_and_send_data(client_socket):
         client_socket.sendall(data)
     client_socket.close()
 
-def main():
-    HOST = '127.0.0.1'
-    PORT = 12345
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-        server_socket.bind((HOST, PORT))
-        server_socket.listen(1)
-        print("Сервер ожидает подключения...")
+def handle_client(conn, addr):
+    try:
+        print('Подключение клиента', addr)
+        
         while True:
-            conn, addr = server_socket.accept()
-            with conn:
-                print('Подключен клиент:', addr)
-                while True:
-                    data = conn.recv(1024)
-                    if not data:
-                        print("Соединение с клиентом разорвано.")
-                        break
-                    elif data.decode() == 'update':
-                        update_and_send_data(conn)
-                        print("Данные обновлены и отправлены клиенту.")
-                        break
-                    else:
-                        print("Неверная команда от клиента.")
-                        break
+            data = conn.recv(1024)
+            if not data:
+                break
+            print(f'Прием данных от клиента {addr}: {data.decode()}')
+            conn.sendall(data)
+            
+    except socket.error as e:
+        print(f"Ошибка при работе с клиентом {addr}: {e}")
+        
+    finally:
+        conn.close()
+        print('Отключение клиента', addr)
 
-if __name__ == "__main__":
-    main()
+def find_executables_in_path():
+    executables = {}
+    path_dirs = os.getenv("PATH").split(os.pathsep)
+    for directory in path_dirs:
+        try:
+            filenames = os.listdir(directory)
+        except OSError:
+            continue
+        for filename in filenames:
+            filepath = os.path.join(directory, filename)
+            try:
+                if os.path.isfile(filepath) and os.access(filepath, os.X_OK):
+                    executables.setdefault(directory, []).append(filename)
+            except OSError:
+                continue
+    return executables
+
+
+def create_socket_and_listen():
+    global sock
+    sock = socket.socket()
+    sock.bind(('', 9099))
+    sock.listen(5)
+    print('Начало прослушивания порта')
+    while True:
+        conn, addr = sock.accept()
+        client_thread = threading.Thread(target=handle_client, args=(conn, addr))
+        client_thread.start()
+        with conn:
+            print('Подключен клиент:', addr)
+            while True:
+                data = conn.recv(1024)
+                if not data:
+                    print("Соединение с клиентом разорвано.")
+                    break
+                elif data.decode() == 'update':
+                    update_and_send_data(conn)
+                    print("Данные обновлены и отправлены клиенту.")
+                    break
+                elif data.decode() == "var4":
+                    executable_info = find_executables_in_path()
+                    json_data = json.dumps(executable_info, ensure_ascii=False, indent=4)
+                    data_bytes = json_data.encode()
+                    conn.send(data_bytes)
+
+                    conn.shutdown(socket.SHUT_WR)
+                else:
+                    print("Неверная команда от клиента.")
+                    break
+
+create_socket_and_listen()
+
+
