@@ -1,5 +1,15 @@
 import socket
 
+def recvall(sock):
+    data = b""
+    while True:
+        part = sock.recv(4096)
+        data += part
+        if len(part) < 4096:
+            break
+    return data
+
+
 def main():
     HOST = 'localhost'
     PORT = 9021
@@ -7,13 +17,13 @@ def main():
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
             try:
                 client_socket.connect((HOST, PORT))
-                client_socket.sendall("Подключен вариант 3".encode())
+                client_socket.sendall("Подключен вариант 4".encode())
                 print("Подключение к серверу установлено.")
                 print("Меню:")
-                print("1. var3 - обновить и получить данные")
+                print("1. var4 - обновить и получить данные")
                 print("2. exit - завершить программу")
                 choice = input("Выберите команду: ")
-                if choice == 'var3':
+                if choice == 'var4':
                     client_socket.sendall(choice.encode())
                     data = b""
                     while True:
@@ -30,6 +40,5 @@ def main():
             except ConnectionRefusedError:
                 print("Не удалось подключиться к серверу.")
                 break
-
 if __name__ == "__main__":
     main()
