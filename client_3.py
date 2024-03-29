@@ -1,12 +1,13 @@
 import socket
 
 def main():
-    HOST = '127.0.0.1'
-    PORT = 12345
+    HOST = 'localhost'
+    PORT = 9010
     while True:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
             try:
                 client_socket.connect((HOST, PORT))
+                client_socket.sendall("Подключен вариант 3".encode())
                 print("Подключение к серверу установлено.")
                 print("Меню:")
                 print("1. update - обновить и получить данные")
