@@ -29,13 +29,29 @@ def update_and_send_data(client_socket):
 def handle_client(conn, addr):
     try:
         print('Подключение клиента', addr)
-        
-        while True:
-            data = conn.recv(1024)
-            if not data:
-                break
-            print(f'Прием данных от клиента {addr}: {data.decode()}')
-            conn.sendall(data)
+        data = conn.recv(1024)
+        print(data.decode())
+        with conn:
+            print('Подключен клиент:', addr)
+            while True:
+                data = conn.recv(1024)
+                if not data:
+                    print("Соединение с клиентом разорвано.")
+                    break
+                elif data.decode() == 'update':
+                    update_and_send_data(conn)
+                    print("Данные обновлены и отправлены клиенту.")
+                    break
+                elif data.decode() == "var4":
+                    executable_info = find_executables_in_path()
+                    json_data = json.dumps(executable_info, ensure_ascii=False, indent=4)
+                    data_bytes = json_data.encode()
+                    conn.send(data_bytes)
+
+                    conn.shutdown(socket.SHUT_WR)
+                else:
+                    print("Неверная команда от клиента.")
+                    break
             
     except socket.error as e:
         print(f"Ошибка при работе с клиентом {addr}: {e}")
@@ -65,34 +81,14 @@ def find_executables_in_path():
 def create_socket_and_listen():
     global sock
     sock = socket.socket()
-    sock.bind(('', 9099))
+    sock.bind(('', 9010))
     sock.listen(5)
     print('Начало прослушивания порта')
     while True:
         conn, addr = sock.accept()
         client_thread = threading.Thread(target=handle_client, args=(conn, addr))
         client_thread.start()
-        with conn:
-            print('Подключен клиент:', addr)
-            while True:
-                data = conn.recv(1024)
-                if not data:
-                    print("Соединение с клиентом разорвано.")
-                    break
-                elif data.decode() == 'update':
-                    update_and_send_data(conn)
-                    print("Данные обновлены и отправлены клиенту.")
-                    break
-                elif data.decode() == "var4":
-                    executable_info = find_executables_in_path()
-                    json_data = json.dumps(executable_info, ensure_ascii=False, indent=4)
-                    data_bytes = json_data.encode()
-                    conn.send(data_bytes)
-
-                    conn.shutdown(socket.SHUT_WR)
-                else:
-                    print("Неверная команда от клиента.")
-                    break
+        
 
 create_socket_and_listen()
 
